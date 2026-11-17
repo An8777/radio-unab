@@ -79,8 +79,13 @@ function iniciarPlayer(videoId) {
 
 function cargarVideo(url) {
   const id = ytId(url);
-  if (!id || id === ytIdActivo) return;
+  if (!id) return;
   if (!ytAPILista) { pendienteId = id; setEstadoTxt("Preparando..."); return; }
+  if (id === ytIdActivo && ytPlayer) {
+    // mismo video — solo asegura que esté reproduciéndose
+    try { ytPlayer.playVideo(); } catch(e) {}
+    return;
+  }
   iniciarPlayer(id);
 }
 
@@ -229,12 +234,13 @@ function aplicar(e) {
 }
 
 // ─── VOZ EN VIVO (MediaSource + Socket.io) ──────────────────────────────────
-let vozMimeType   = "audio/webm;codecs=opus";
-let mediaSource   = null;
-let sourceBuffer  = null;
-let vozQueue      = [];
-let vozIniciada   = false;
-let vozAudio      = null;
+let vozMimeType        = "audio/webm;codecs=opus";
+let mediaSource        = null;
+let sourceBuffer       = null;
+let vozQueue           = [];
+let vozIniciada        = false;
+let vozAudio           = null;
+let reproduciaAntesVoz = false; // estaba reproduciendo antes de que el locutor hablara
 
 function crearMediaSource() {
   vozAudio = new Audio();
@@ -254,7 +260,6 @@ function crearMediaSource() {
         }
       });
 
-      // Vacía cola pendiente
       if (vozQueue.length > 0 && !sourceBuffer.updating) {
         sourceBuffer.appendBuffer(vozQueue.shift());
       }
@@ -269,6 +274,7 @@ socket.on("voz-inicio", (data) => {
   vozMimeType = data?.mimeType || "audio/webm;codecs=opus";
   vozQueue = [];
   vozIniciada = true;
+  reproduciaAntesVoz = reproduciendo; // guarda si estaba sonando
   crearMediaSource();
   if (ytPlayer && reproduciendo) ytPlayer.pauseVideo();
 });
@@ -282,8 +288,9 @@ socket.on("voz-fin", () => {
   sourceBuffer = null;
   mediaSource  = null;
   if (vozAudio) { vozAudio.pause(); vozAudio = null; }
-  setEstadoTxt(reproduciendo ? "Reproduciendo en vivo" : "Pausado");
-  if (ytPlayer) ytPlayer.playVideo();
+  setEstadoTxt(reproduciaAntesVoz ? "Reproduciendo en vivo" : "Pausado");
+  // Solo reanuda si el oyente estaba escuchando antes
+  if (ytPlayer && reproduciaAntesVoz) ytPlayer.playVideo();
 });
 
 socket.on("voz-chunk", (chunk) => {
