@@ -183,11 +183,12 @@ io.on("connection", (socket) => {
     socket.broadcast.emit("voz-chunk", chunk);
   });
 
-  socket.on("voz-inicio", () => {
+  socket.on("voz-inicio", (data) => {
     if (!oyentesConectados.get(socket.id)?.esLocutor) return;
     estadoRadio.vozActiva = true;
-    console.log("[Voz] Locutor al aire");
-    socket.broadcast.emit("voz-inicio");
+    estadoRadio.vozMimeType = data?.mimeType || "audio/webm;codecs=opus";
+    console.log("[Voz] Locutor al aire, mimeType:", estadoRadio.vozMimeType);
+    socket.broadcast.emit("voz-inicio", { mimeType: estadoRadio.vozMimeType });
     io.emit("mensajeSistema", {
       tipo: "sistema",
       texto: "🎙️ El locutor está hablando en vivo",

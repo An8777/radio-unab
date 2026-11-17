@@ -456,7 +456,7 @@ async function iniciarVoz() {
     accPausa.textContent = "▶️ Reanudar YouTube";
   }
 
-  socket.emit("voz-inicio");
+  socket.emit("voz-inicio", { mimeType });
   mostrarToast("🎙️ Estás al aire");
 }
 

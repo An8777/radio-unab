@@ -228,38 +228,78 @@ function aplicar(e) {
   }
 }
 
-// ─── VOZ EN VIVO (MediaRecorder + Socket.io) ────────────────────────────────
-let audioCtx    = null;
-let sourceQueue = [];
-let vozBuffer   = [];
-let vozMimeType = "audio/webm;codecs=opus";
+// ─── VOZ EN VIVO (MediaSource + Socket.io) ──────────────────────────────────
+let vozMimeType   = "audio/webm;codecs=opus";
+let mediaSource   = null;
+let sourceBuffer  = null;
+let vozQueue      = [];
+let vozIniciada   = false;
+let vozAudio      = null;
 
-socket.on("voz-inicio", () => {
+function crearMediaSource() {
+  vozAudio = new Audio();
+  vozAudio.autoplay = true;
+
+  mediaSource = new MediaSource();
+  vozAudio.src = URL.createObjectURL(mediaSource);
+
+  mediaSource.addEventListener("sourceopen", () => {
+    try {
+      sourceBuffer = mediaSource.addSourceBuffer(vozMimeType);
+      sourceBuffer.mode = "sequence";
+
+      sourceBuffer.addEventListener("updateend", () => {
+        if (vozQueue.length > 0 && !sourceBuffer.updating) {
+          sourceBuffer.appendBuffer(vozQueue.shift());
+        }
+      });
+
+      // Vacía cola pendiente
+      if (vozQueue.length > 0 && !sourceBuffer.updating) {
+        sourceBuffer.appendBuffer(vozQueue.shift());
+      }
+    } catch (e) {
+      console.warn("[Voz] MediaSource error:", e);
+    }
+  });
+}
+
+socket.on("voz-inicio", (data) => {
   setEstadoTxt("🎙️ El locutor está hablando...");
-  vozBuffer = [];
+  vozMimeType = data?.mimeType || "audio/webm;codecs=opus";
+  vozQueue = [];
+  vozIniciada = true;
+  crearMediaSource();
   if (ytPlayer && reproduciendo) ytPlayer.pauseVideo();
 });
 
 socket.on("voz-fin", () => {
+  vozIniciada = false;
+  vozQueue = [];
+  if (mediaSource && mediaSource.readyState === "open") {
+    try { mediaSource.endOfStream(); } catch(e) {}
+  }
+  sourceBuffer = null;
+  mediaSource  = null;
+  if (vozAudio) { vozAudio.pause(); vozAudio = null; }
   setEstadoTxt(reproduciendo ? "Reproduciendo en vivo" : "Pausado");
-  vozBuffer = [];
   if (ytPlayer) ytPlayer.playVideo();
 });
 
-// Recibe chunks de audio y los reproduce
-socket.on("voz-chunk", async (chunk) => {
+socket.on("voz-chunk", (chunk) => {
+  if (!vozIniciada) return;
   try {
-    // Inicializa AudioContext la primera vez (requiere interacción del usuario previa)
-    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    if (audioCtx.state === "suspended") await audioCtx.resume();
-
-    const arrayBuf = chunk instanceof ArrayBuffer ? chunk : await chunk.arrayBuffer();
-    const audioBuf = await audioCtx.decodeAudioData(arrayBuf.slice(0));
-    const source   = audioCtx.createBufferSource();
-    source.buffer  = audioBuf;
-    source.connect(audioCtx.destination);
-    source.start();
+    const buf = chunk instanceof ArrayBuffer ? chunk : chunk.buffer;
+    if (!sourceBuffer || mediaSource?.readyState !== "open") {
+      vozQueue.push(buf);
+      return;
+    }
+    if (sourceBuffer.updating) {
+      vozQueue.push(buf);
+    } else {
+      sourceBuffer.appendBuffer(buf);
+    }
   } catch (e) {
-    // Algunos chunks intermedios no son decodificables individualmente — ignorar
+    console.warn("[Voz] chunk error:", e);
   }
 });
