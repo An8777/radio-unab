@@ -393,5 +393,23 @@ html,body{height:100%;font-family:'Inter',sans-serif;background:var(--bg);color:
   .chat-input{
     font-size:16px; /* evita zoom automático en iOS */
     padding:12px 16px;
+    -webkit-user-select:text;
+    user-select:text;
+  }
+}
+
+/* Safari iOS: teclado virtual y fill-available */
+@supports (-webkit-touch-callout: none) {
+  .chat-panel{
+    min-height: -webkit-fill-available;
+  }
+  .chat-bottom{
+    position: -webkit-sticky;
+    position: sticky;
+    bottom: env(safe-area-inset-bottom, 0px);
+  }
+  .chat-input{
+    -webkit-appearance: none;
+    border-radius: 50px;
   }
 }
