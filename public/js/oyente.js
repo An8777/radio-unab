@@ -424,10 +424,10 @@ reactBtns.forEach((btn) => {
     reactCooldowns[emoji] = ahora;
 
     socket.emit("reaccion", { emoji });
+    lanzarEmoji(emoji); // lanza localmente sin esperar al servidor
 
-    // Animación del botón
     btn.classList.remove("burst");
-    void btn.offsetWidth; // reflow para reiniciar la animación
+    void btn.offsetWidth;
     btn.classList.add("burst");
   });
 });

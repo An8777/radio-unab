@@ -215,8 +215,8 @@ io.on("connection", (socket) => {
   });
 
   socket.on("reaccion", (data) => {
-    const EMOJIS_VALIDOS = ["❤️", "🔥", "🎵", "🎉", "👏"];
-    if (!EMOJIS_VALIDOS.includes(data?.emoji)) return;
+    const EMOJIS_VALIDOS = ["❤️", "🔥", "🎵", "🎉", "👏", "❤"];
+    if (!data?.emoji || !EMOJIS_VALIDOS.includes(data.emoji)) return;
     io.emit("reaccion", { emoji: data.emoji });
   });
 

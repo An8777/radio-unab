@@ -126,6 +126,14 @@
       <span>Compartir</span>
     </button>
 
+    <!-- Botón instalar PWA -->
+    <button class="share-btn" id="btn-instalar" style="display:none" aria-label="Instalar app">
+      <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor">
+        <path d="M19 9h-4V3H9v6H5l7 7 7-7zm-8 2V5h2v6h1.17L12 13.17 9.83 11H11zm-6 7h14v2H5z"/>
+      </svg>
+      <span>Instalar App</span>
+    </button>
+
     <!-- Player YT oculto -->
     <div id="yt-player-container" style="position:absolute;width:1px;height:1px;opacity:0;pointer-events:none;bottom:0;left:0;"></div>
 
@@ -188,6 +196,29 @@
 <script src="/socket.io/socket.io.js"></script>
 <script src="js/oyente.js"></script>
 <script>
+  // PWA — instalar app
+  let pwaPrompt = null;
+  window.addEventListener("beforeinstallprompt", (e) => {
+    e.preventDefault();
+    pwaPrompt = e;
+    const btn = document.getElementById("btn-instalar");
+    if (btn) btn.style.display = "flex";
+  });
+  document.getElementById("btn-instalar")?.addEventListener("click", async () => {
+    if (!pwaPrompt) return;
+    pwaPrompt.prompt();
+    const { outcome } = await pwaPrompt.userChoice;
+    if (outcome === "accepted") {
+      document.getElementById("btn-instalar").style.display = "none";
+    }
+    pwaPrompt = null;
+  });
+  window.addEventListener("appinstalled", () => {
+    const btn = document.getElementById("btn-instalar");
+    if (btn) btn.style.display = "none";
+  });
+
+  // Service Worker
   if ("serviceWorker" in navigator) {
     navigator.serviceWorker.register("/sw.js").catch(() => {});
   }
