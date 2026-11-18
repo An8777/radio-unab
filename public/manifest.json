@@ -1,14 +1,37 @@
 {
+  "id": "radio-unab-app",
   "name": "Radio UNAB",
   "short_name": "Radio UNAB",
   "description": "Radio UNAB en vivo — música, chat y más",
   "start_url": "/",
+  "scope": "/",
   "display": "standalone",
   "background_color": "#07070f",
   "theme_color": "#e94560",
   "orientation": "portrait",
+  "lang": "es",
+  "categories": ["music", "entertainment"],
   "icons": [
-    { "src": "/img/logo.jpg", "sizes": "192x192", "type": "image/jpeg" },
-    { "src": "/img/logo.jpg", "sizes": "512x512", "type": "image/jpeg" }
+    {
+      "src": "/img/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/img/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "/img/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "Radio UNAB en vivo"
+    }
   ]
 }
