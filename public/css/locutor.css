@@ -383,3 +383,158 @@ html,body{height:100%;font-family:'Inter',sans-serif;background:var(--bg);color:
   .col-monitor{height:65vh}
   .cab-indicators{display:none}
 }
+
+/* ═══════════ TEMPORIZADOR DE SEGMENTOS ═══════════ */
+.timer-widget{
+  display:flex;align-items:center;gap:7px;
+  background:var(--card);border:1px solid var(--border);
+  border-radius:var(--rs);padding:5px 10px;
+  position:relative;
+}
+.timer-display{
+  font-family:'Bebas Neue',sans-serif;font-size:1.1rem;
+  letter-spacing:0.08em;color:var(--txt);min-width:48px;
+  text-align:center;
+}
+.timer-widget.running .timer-display{color:var(--red)}
+.timer-btns{display:flex;gap:4px}
+.timer-btn{
+  width:22px;height:22px;border-radius:var(--rxs);
+  background:var(--input);border:1px solid var(--borderl);
+  color:var(--txt2);cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  transition:all 0.15s;padding:0;
+}
+.timer-btn:hover{background:var(--acc);border-color:var(--acc);color:#fff}
+.timer-marks{
+  position:absolute;top:calc(100% + 6px);left:0;right:0;z-index:50;
+  display:flex;flex-direction:column;gap:3px;
+  max-height:120px;overflow-y:auto;
+  background:var(--elevated);border:1px solid var(--borderl);
+  border-radius:var(--rs);padding:5px 7px;
+  display:none;
+}
+.timer-marks.has-marks{display:flex}
+.timer-mark-item{
+  font-size:0.65rem;color:var(--txt2);display:flex;align-items:center;gap:5px;
+}
+.timer-mark-item::before{
+  content:"⚑";color:var(--yellow);font-size:0.7rem;
+}
+
+/* ═══════════ COLA DE CANCIONES ═══════════ */
+.tc-icon.blue{background:rgba(74,158,202,0.12);color:var(--blue);border:1px solid rgba(74,158,202,0.25)}
+.tc-icon.green{background:rgba(29,185,84,0.12);color:var(--green);border:1px solid rgba(29,185,84,0.25)}
+
+.queue-badge{
+  margin-left:auto;
+  background:var(--acc);color:#fff;
+  font-size:0.6rem;font-weight:800;
+  padding:2px 7px;border-radius:50px;
+  min-width:20px;text-align:center;
+}
+
+.queue-list{
+  margin-top:10px;
+  display:flex;flex-direction:column;gap:5px;
+  max-height:180px;overflow-y:auto;
+}
+.queue-list::-webkit-scrollbar{width:3px}
+.queue-list::-webkit-scrollbar-thumb{background:var(--borderl);border-radius:2px}
+
+.queue-empty{
+  text-align:center;font-size:0.72rem;color:var(--txt3);
+  padding:14px 0;
+}
+
+.queue-item{
+  display:flex;align-items:center;gap:7px;
+  background:var(--input);border:1px solid var(--border);
+  border-radius:var(--rxs);padding:7px 9px;
+  animation:card-in 0.15s ease;
+}
+.queue-item.playing{border-left:3px solid var(--green)}
+.queue-num{
+  font-size:0.63rem;font-weight:800;color:var(--txt3);
+  min-width:16px;text-align:center;
+}
+.queue-item.playing .queue-num{color:var(--green)}
+.queue-title{
+  flex:1;font-size:0.74rem;color:var(--txt2);
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+.queue-item.playing .queue-title{color:var(--txt)}
+.queue-item-btns{display:flex;gap:3px;flex-shrink:0}
+.queue-item-btn{
+  width:20px;height:20px;border-radius:4px;
+  background:transparent;border:1px solid var(--borderl);
+  color:var(--txt3);cursor:pointer;font-size:0.65rem;
+  display:flex;align-items:center;justify-content:center;
+  transition:all 0.12s;padding:0;
+}
+.queue-item-btn:hover{background:var(--acc);border-color:var(--acc);color:#fff}
+.queue-item-btn.del:hover{background:var(--red);border-color:var(--red)}
+
+.queue-controls{
+  display:flex;gap:7px;margin-top:9px;
+}
+.queue-controls .quick-btn{flex:1;text-align:center}
+
+/* ═══════════ NOTAS RÁPIDAS ═══════════ */
+.collapsible-card .collapse-trigger{
+  cursor:pointer;user-select:none;margin-bottom:0;border-bottom:none;padding-bottom:0;
+}
+.collapsible-card.open .collapse-trigger{
+  margin-bottom:14px;padding-bottom:11px;border-bottom:1px solid var(--border);
+}
+.collapse-arrow{
+  margin-left:auto;color:var(--txt3);transition:transform 0.2s;
+}
+.collapsible-card.open .collapse-arrow{transform:rotate(180deg)}
+
+.collapsible-body{
+  display:none;
+}
+.collapsible-card.open .collapsible-body{display:block}
+
+.notas-area{
+  width:100%;background:var(--input);
+  border:1.5px solid var(--border);border-radius:var(--rs);
+  padding:10px 12px;color:var(--txt);
+  font-size:0.82rem;font-family:'Inter',sans-serif;line-height:1.5;
+  outline:none;resize:vertical;min-height:90px;
+  transition:border-color 0.15s,box-shadow 0.15s;
+}
+.notas-area::placeholder{color:var(--txt3)}
+.notas-area:focus{border-color:var(--green);box-shadow:0 0 0 3px rgba(29,185,84,0.15)}
+
+.notas-footer{
+  display:flex;align-items:center;justify-content:space-between;
+  margin-top:7px;
+}
+.notas-hint{font-size:0.63rem;color:var(--txt3)}
+.notas-hint.guardando{color:var(--yellow)}
+.notas-hint.guardado{color:var(--green)}
+.notas-clear-btn{padding:5px 10px;font-size:0.72rem}
+
+/* ═══════════ ESTADÍSTICAS ═══════════ */
+.stats-grid{
+  display:grid;grid-template-columns:1fr 1fr;
+  gap:8px;
+}
+.stat-item{
+  background:var(--input);border:1px solid var(--border);
+  border-radius:var(--rs);padding:10px 12px;
+  display:flex;flex-direction:column;gap:3px;
+}
+.stat-value{
+  font-family:'Bebas Neue',sans-serif;font-size:1.4rem;
+  letter-spacing:0.05em;color:var(--txt);line-height:1;
+}
+.stat-value.accent-yellow{color:var(--yellow)}
+.stat-value.accent-blue{color:var(--blue)}
+.stat-value.accent-green{color:var(--green)}
+.stat-label{
+  font-size:0.6rem;font-weight:600;color:var(--txt3);
+  text-transform:uppercase;letter-spacing:0.07em;
+}

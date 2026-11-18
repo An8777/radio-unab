@@ -384,16 +384,8 @@ socket.on("historialChat", (historial) => {
   scrollAlFinal();
 });
 
-socket.on("nuevoMensaje", (msg) => {
-  renderizarPeticion(msg);
-});
-
 socket.on("mensajeSistema", (msg) => {
   renderizarPeticion(msg);
-});
-
-socket.on("actualizarOyentes", (data) => {
-  oyentesCount.textContent = data.count;
 });
 
 
@@ -482,4 +474,346 @@ function detenerVoz() {
 btnVoz.addEventListener("click", () => {
   if (!vozActiva) iniciarVoz();
   else detenerVoz();
+});
+
+// ═══════════════════════════════════════════════════════════
+// ── TEMPORIZADOR DE SEGMENTOS ───────────────────────────────
+// ═══════════════════════════════════════════════════════════
+const timerDisplay  = document.getElementById("timer-display");
+const timerWidget   = document.getElementById("timer-widget");
+const timerToggle   = document.getElementById("timer-toggle");
+const timerReset    = document.getElementById("timer-reset");
+const timerMarkBtn  = document.getElementById("timer-mark");
+const timerMarksEl  = document.getElementById("timer-marks");
+
+let timerSeconds  = 0;
+let timerRunning  = false;
+let timerInterval = null;
+let timerMarks    = [];
+
+function timerFormat(s) {
+  const m = Math.floor(s / 60).toString().padStart(2, "0");
+  const sc = (s % 60).toString().padStart(2, "0");
+  return `${m}:${sc}`;
+}
+
+function timerTick() {
+  timerSeconds++;
+  timerDisplay.textContent = timerFormat(timerSeconds);
+}
+
+// Toggle icono play/pausa
+function timerUpdateIcon() {
+  timerToggle.innerHTML = timerRunning
+    ? `<svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>`
+    : `<svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>`;
+}
+
+timerToggle.addEventListener("click", () => {
+  if (timerRunning) {
+    clearInterval(timerInterval);
+    timerRunning = false;
+    timerWidget.classList.remove("running");
+  } else {
+    timerInterval = setInterval(timerTick, 1000);
+    timerRunning = true;
+    timerWidget.classList.add("running");
+  }
+  timerUpdateIcon();
+});
+
+timerReset.addEventListener("click", () => {
+  clearInterval(timerInterval);
+  timerRunning = false;
+  timerSeconds = 0;
+  timerDisplay.textContent = "00:00";
+  timerWidget.classList.remove("running");
+  timerMarks = [];
+  timerMarksEl.innerHTML = "";
+  timerMarksEl.classList.remove("has-marks");
+  timerUpdateIcon();
+});
+
+timerMarkBtn.addEventListener("click", () => {
+  const label = timerFormat(timerSeconds);
+  timerMarks.push(label);
+
+  const item = document.createElement("div");
+  item.className = "timer-mark-item";
+  item.textContent = label;
+  timerMarksEl.appendChild(item);
+  timerMarksEl.classList.add("has-marks");
+
+  mostrarToast(`⚑ Tiempo marcado: ${label}`);
+});
+
+// ═══════════════════════════════════════════════════════════
+// ── COLA DE CANCIONES ───────────────────────────────────────
+// ═══════════════════════════════════════════════════════════
+const inputQueue    = document.getElementById("input-queue");
+const btnQueueAdd   = document.getElementById("btn-queue-add");
+const queueListEl   = document.getElementById("queue-list");
+const queueEmptyEl  = document.getElementById("queue-empty");
+const queueBadge    = document.getElementById("queue-badge");
+const btnQueueNext  = document.getElementById("btn-queue-next");
+const btnQueueClear = document.getElementById("btn-queue-clear");
+
+// Cada entrada: { id, url, videoId, title }
+let songQueue    = [];
+let queuePlaying = false;   // true mientras hay autoplay en curso
+
+function queueExtractId(url) {
+  return extraerYoutubeId(url);  // reutiliza la función existente
+}
+
+function queueShortTitle(url, videoId) {
+  // Muestra el ID cuando no hay título disponible
+  return videoId || url;
+}
+
+function queueRender() {
+  // Limpiar lista (excepto el placeholder)
+  queueListEl.querySelectorAll(".queue-item").forEach(el => el.remove());
+
+  if (songQueue.length === 0) {
+    queueEmptyEl.style.display = "";
+    queueBadge.textContent = "0";
+    return;
+  }
+
+  queueEmptyEl.style.display = "none";
+  queueBadge.textContent = String(songQueue.length);
+
+  songQueue.forEach((entry, idx) => {
+    const item = document.createElement("div");
+    item.className = "queue-item" + (idx === 0 ? " playing" : "");
+    item.dataset.qid = entry.id;
+
+    const num = document.createElement("span");
+    num.className = "queue-num";
+    num.textContent = idx === 0 ? "▶" : idx + 1;
+
+    const title = document.createElement("span");
+    title.className = "queue-title";
+    title.title = entry.url;
+    title.textContent = entry.videoId || entry.url;
+
+    const btns = document.createElement("div");
+    btns.className = "queue-item-btns";
+
+    // Subir
+    if (idx > 0) {
+      const up = document.createElement("button");
+      up.className = "queue-item-btn";
+      up.title = "Subir";
+      up.innerHTML = `<svg viewBox="0 0 24 24" width="10" height="10" fill="currentColor"><path d="M7 14l5-5 5 5z"/></svg>`;
+      up.addEventListener("click", () => queueMove(idx, -1));
+      btns.appendChild(up);
+    }
+
+    // Bajar
+    if (idx < songQueue.length - 1) {
+      const dn = document.createElement("button");
+      dn.className = "queue-item-btn";
+      dn.title = "Bajar";
+      dn.innerHTML = `<svg viewBox="0 0 24 24" width="10" height="10" fill="currentColor"><path d="M7 10l5 5 5-5z"/></svg>`;
+      dn.addEventListener("click", () => queueMove(idx, 1));
+      btns.appendChild(dn);
+    }
+
+    // Eliminar
+    const del = document.createElement("button");
+    del.className = "queue-item-btn del";
+    del.title = "Eliminar";
+    del.innerHTML = `<svg viewBox="0 0 24 24" width="10" height="10" fill="currentColor"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>`;
+    del.addEventListener("click", () => queueRemove(idx));
+    btns.appendChild(del);
+
+    item.appendChild(num);
+    item.appendChild(title);
+    item.appendChild(btns);
+    queueListEl.appendChild(item);
+  });
+}
+
+function queueMove(idx, dir) {
+  const newIdx = idx + dir;
+  if (newIdx < 0 || newIdx >= songQueue.length) return;
+  [songQueue[idx], songQueue[newIdx]] = [songQueue[newIdx], songQueue[idx]];
+  queueRender();
+}
+
+function queueRemove(idx) {
+  songQueue.splice(idx, 1);
+  queueRender();
+  mostrarToast("🗑️ Canción eliminada de la cola");
+}
+
+function queuePlayNext() {
+  if (songQueue.length === 0) {
+    queuePlaying = false;
+    mostrarToast("🎵 Cola terminada");
+    return;
+  }
+
+  const entry = songQueue[0];
+  const embedUrl = `https://www.youtube.com/embed/${entry.videoId}?autoplay=1&enablejsapi=1&rel=0`;
+
+  ytIframe.src = embedUrl;
+  ytIframe.style.display = "block";
+  ytPlaceholder.style.display = "none";
+  ytPausado = false;
+  ytMuteado = false;
+
+  socket.emit("actualizarCancion", {
+    youtubeUrl: `https://www.youtube.com/watch?v=${entry.videoId}`,
+    programa: inpPrograma.value || undefined,
+    cancion:  inpCancion.value  || undefined,
+    artista:  inpArtista.value  || undefined,
+    caratula: inpCaratula.value || undefined
+  });
+
+  mostrarToast(`▶️ Reproduciendo: ${entry.videoId}`);
+  queuePlaying = true;
+
+  // Elimina de la cola y re-renderiza
+  songQueue.shift();
+  queueRender();
+}
+
+btnQueueAdd.addEventListener("click", () => {
+  const url = inputQueue.value.trim();
+  if (!url) return mostrarToast("⚠️ Escribe una URL de YouTube primero");
+  const videoId = queueExtractId(url);
+  if (!videoId) return mostrarToast("❌ URL no válida");
+
+  songQueue.push({ id: `q-${Date.now()}`, url, videoId });
+  inputQueue.value = "";
+  queueRender();
+  mostrarToast(`✅ Añadido a la cola: ${videoId}`);
+});
+
+// Permitir Enter en el input de cola
+inputQueue.addEventListener("keydown", (e) => {
+  if (e.key === "Enter") btnQueueAdd.click();
+});
+
+btnQueueNext.addEventListener("click", () => {
+  if (songQueue.length === 0) return mostrarToast("⚠️ La cola está vacía");
+  queuePlayNext();
+});
+
+btnQueueClear.addEventListener("click", () => {
+  songQueue = [];
+  queueRender();
+  mostrarToast("🗑️ Cola vaciada");
+});
+
+// Auto-avance: cuando el iframe carga un nuevo video y la cola tiene canciones,
+// escucha el evento de fin del video mediante postMessage de YouTube
+window.addEventListener("message", (e) => {
+  if (!e.data || typeof e.data !== "string") return;
+  try {
+    const d = JSON.parse(e.data);
+    // YouTube playerState 0 = video ended
+    if (d.event === "onStateChange" && d.info === 0 && songQueue.length > 0) {
+      queuePlayNext();
+    }
+  } catch {}
+});
+
+// ═══════════════════════════════════════════════════════════
+// ── NOTAS RÁPIDAS ───────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════
+const cardNotas     = document.getElementById("card-notas");
+const notasTrigger  = document.getElementById("notas-trigger");
+const notasBody     = document.getElementById("notas-body");
+const notasTextarea = document.getElementById("notas-textarea");
+const notasHint     = document.getElementById("notas-hint");
+const btnNotasLimp  = document.getElementById("btn-notas-limpiar");
+
+const NOTAS_KEY = "radio-unab-notas";
+let notasSaveTimer = null;
+
+// Cargar notas guardadas
+notasTextarea.value = localStorage.getItem(NOTAS_KEY) || "";
+
+// Toggle colapsar/expandir
+notasTrigger.addEventListener("click", () => {
+  cardNotas.classList.toggle("open");
+});
+
+// Auto-guardado con debounce
+notasTextarea.addEventListener("input", () => {
+  notasHint.textContent = "Guardando…";
+  notasHint.className = "notas-hint guardando";
+
+  clearTimeout(notasSaveTimer);
+  notasSaveTimer = setTimeout(() => {
+    localStorage.setItem(NOTAS_KEY, notasTextarea.value);
+    notasHint.textContent = "Guardado ✓";
+    notasHint.className = "notas-hint guardado";
+  }, 600);
+});
+
+btnNotasLimp.addEventListener("click", () => {
+  notasTextarea.value = "";
+  localStorage.removeItem(NOTAS_KEY);
+  notasHint.textContent = "Limpiado";
+  notasHint.className = "notas-hint";
+  mostrarToast("🗒️ Notas borradas");
+});
+
+// ═══════════════════════════════════════════════════════════
+// ── ESTADÍSTICAS ────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════
+const statOyentes  = document.getElementById("stat-oyentes");
+const statPico     = document.getElementById("stat-pico");
+const statMensajes = document.getElementById("stat-mensajes");
+const statUptime   = document.getElementById("stat-uptime");
+
+// Estado local de stats (el servidor puede sobreescribir con el evento "estadisticas")
+let statsLocal = {
+  oyentes:  0,
+  pico:     0,
+  mensajes: 0,
+  inicio:   Date.now()
+};
+
+// Uptime calculado localmente (desde que el locutor abre la cabina)
+setInterval(() => {
+  const elapsed = Math.floor((Date.now() - statsLocal.inicio) / 1000);
+  const h = Math.floor(elapsed / 3600);
+  const m = Math.floor((elapsed % 3600) / 60).toString().padStart(2, "0");
+  const s = (elapsed % 60).toString().padStart(2, "0");
+  statUptime.textContent = h > 0 ? `${h}:${m}:${s}` : `${m}:${s}`;
+}, 1000);
+
+// Sincroniza oyentes con el contador del header
+function statsUpdateOyentes(count) {
+  statsLocal.oyentes = count;
+  if (count > statsLocal.pico) statsLocal.pico = count;
+  statOyentes.textContent = count;
+  statPico.textContent    = statsLocal.pico;
+}
+
+// Conta mensajes recibidos
+socket.on("nuevoMensaje", (msg) => {
+  renderizarPeticion(msg);
+  if (msg.tipo === "oyente") {
+    statsLocal.mensajes++;
+    statMensajes.textContent = statsLocal.mensajes;
+  }
+});
+
+socket.on("actualizarOyentes", (data) => {
+  oyentesCount.textContent = data.count;
+  statsUpdateOyentes(data.count);
+});
+
+// Evento enviado por el servidor con datos persistentes (opcional)
+socket.on("estadisticas", (data) => {
+  if (data.picOyentes   != null) { statsLocal.pico     = data.picOyentes;   statPico.textContent     = data.picOyentes; }
+  if (data.totalMensajes != null) { statsLocal.mensajes = data.totalMensajes; statMensajes.textContent = data.totalMensajes; }
+  if (data.tiempoAlAire  != null) { statUptime.textContent = data.tiempoAlAire; }
 });

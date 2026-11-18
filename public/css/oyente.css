@@ -413,3 +413,136 @@ html,body{height:100%;font-family:'Inter',sans-serif;background:var(--bg);color:
     border-radius: 50px;
   }
 }
+
+/* ════════════════════════════════════════
+   HISTORIAL DE CANCIONES
+   ════════════════════════════════════════ */
+.song-history{
+  width:100%;
+  background:rgba(255,255,255,0.03);
+  border:1px solid var(--border);
+  border-radius:var(--r);
+  padding:12px 16px;
+}
+.sh-label{
+  font-size:0.55rem;font-weight:700;letter-spacing:0.2em;
+  color:var(--txt3);text-transform:uppercase;margin-bottom:8px;
+}
+.sh-list{
+  list-style:none;
+  display:flex;flex-direction:column;gap:5px;
+}
+.sh-empty{
+  font-size:0.72rem;color:var(--txt3);text-align:center;padding:4px 0;
+}
+.sh-item{
+  display:flex;align-items:center;justify-content:space-between;gap:8px;
+  padding:5px 0;
+  border-bottom:1px solid var(--border);
+  animation:msg-pop 0.2s ease;
+}
+.sh-item:last-child{border-bottom:none}
+.sh-item-info{flex:1;min-width:0}
+.sh-item-name{
+  font-size:0.75rem;font-weight:600;color:var(--txt);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+.sh-item-artist{
+  font-size:0.65rem;color:var(--txt3);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+.sh-item-time{
+  font-size:0.6rem;color:var(--txt3);flex-shrink:0;
+}
+
+/* ════════════════════════════════════════
+   BOTÓN COMPARTIR
+   ════════════════════════════════════════ */
+.share-btn{
+  display:flex;align-items:center;gap:7px;
+  background:rgba(255,255,255,0.04);
+  border:1px solid var(--border);
+  color:var(--txt3);
+  font-size:0.72rem;font-weight:600;font-family:inherit;
+  padding:8px 16px;border-radius:50px;
+  cursor:pointer;
+  transition:background 0.15s, color 0.15s, border-color 0.15s, transform 0.12s;
+  align-self:center;
+}
+.share-btn:hover{
+  background:rgba(233,69,96,0.1);
+  border-color:rgba(233,69,96,0.4);
+  color:var(--acc);
+  transform:scale(1.04);
+}
+.share-btn:active{transform:scale(0.95)}
+/* feedback al copiar */
+.share-btn.copied{
+  background:rgba(29,185,84,0.12);
+  border-color:rgba(29,185,84,0.4);
+  color:var(--green);
+}
+
+/* ════════════════════════════════════════
+   BARRA DE REACCIONES
+   ════════════════════════════════════════ */
+.reactions-bar{
+  display:flex;align-items:center;justify-content:center;gap:8px;
+  padding:8px 24px;
+  background:var(--surface);
+  border-top:1px solid var(--border);
+  flex-shrink:0;
+}
+.react-btn{
+  background:rgba(255,255,255,0.04);
+  border:1px solid var(--border);
+  border-radius:50px;
+  font-size:1.1rem;
+  width:40px;height:40px;
+  display:flex;align-items:center;justify-content:center;
+  cursor:pointer;
+  transition:transform 0.12s, background 0.12s, border-color 0.12s;
+  line-height:1;
+}
+.react-btn:hover{
+  background:rgba(255,255,255,0.08);
+  border-color:var(--txt3);
+  transform:scale(1.18);
+}
+.react-btn:active{transform:scale(0.88)}
+.react-btn.burst{
+  animation:react-burst 0.3s ease;
+}
+@keyframes react-burst{
+  0%  {transform:scale(1)}
+  40% {transform:scale(1.4)}
+  70% {transform:scale(0.9)}
+  100%{transform:scale(1)}
+}
+
+/* ════════════════════════════════════════
+   EMOJIS FLOTANTES
+   ════════════════════════════════════════ */
+#emoji-overlay{
+  position:fixed;
+  bottom:0;right:0;
+  width:120px;height:100%;
+  pointer-events:none;
+  z-index:9999;
+  overflow:hidden;
+}
+.floating-emoji{
+  position:absolute;
+  bottom:60px;
+  font-size:1.6rem;
+  line-height:1;
+  animation:float-up var(--dur, 2.4s) ease-out forwards;
+  opacity:1;
+  /* horizontal position set via JS */
+}
+@keyframes float-up{
+  0%  {transform:translateY(0)   scale(0.6); opacity:0}
+  10% {transform:translateY(-20px) scale(1.15); opacity:1}
+  80% {opacity:1}
+  100%{transform:translateY(-320px) scale(0.9); opacity:0}
+}

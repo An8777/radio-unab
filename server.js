@@ -150,6 +150,13 @@ const oyentesConectados = new Map();
 const historialChat = [];
 const MAX_HISTORIAL = 50;
 
+// Estadísticas globales
+let stats = {
+  picOyentes: 0,
+  totalMensajes: 0,
+  inicioServidor: Date.now()
+};
+
 // ─── Socket.io ────────────────────────────────────────────────────────────────
 io.on("connection", (socket) => {
   const esLocutor = socket.handshake.query.rol === "locutor";
@@ -164,7 +171,9 @@ io.on("connection", (socket) => {
   if (!esLocutor) {
     io.emit("mensajeSistema", { tipo: "sistema", texto: `${apodo} se unio a la radio`, timestamp: new Date().toISOString() });
   }
+  if (oyentesConectados.size > stats.picOyentes) stats.picOyentes = oyentesConectados.size;
   io.emit("actualizarOyentes", { count: oyentesConectados.size });
+  io.emit("estadisticas", { picOyentes: stats.picOyentes, totalMensajes: stats.totalMensajes, tiempoAlAire: Date.now() - stats.inicioServidor });
 
   if (!esLocutor && estadoRadio.vozActiva) {
     socket.emit("voz-inicio");
@@ -182,7 +191,9 @@ io.on("connection", (socket) => {
     };
     historialChat.push(mensaje);
     if (historialChat.length > MAX_HISTORIAL) historialChat.shift();
+    stats.totalMensajes++;
     io.emit("nuevoMensaje", mensaje);
+    io.emit("estadisticas", { picOyentes: stats.picOyentes, totalMensajes: stats.totalMensajes, tiempoAlAire: Date.now() - stats.inicioServidor });
   });
 
   socket.on("actualizarCancion", (data) => {
@@ -201,6 +212,12 @@ io.on("connection", (socket) => {
     if (!oyentesConectados.get(socket.id)?.esLocutor) return;
     estadoRadio.enVivo = !!data.enVivo;
     io.emit("estadoEnVivo", { enVivo: estadoRadio.enVivo });
+  });
+
+  socket.on("reaccion", (data) => {
+    const EMOJIS_VALIDOS = ["❤️", "🔥", "🎵", "🎉", "👏"];
+    if (!EMOJIS_VALIDOS.includes(data?.emoji)) return;
+    io.emit("reaccion", { emoji: data.emoji });
   });
 
   socket.on("marcarCompletado", (data) => {
@@ -236,6 +253,7 @@ io.on("connection", (socket) => {
         io.emit("mensajeSistema", { tipo: "sistema", texto: `${usuario.apodo} salio de la radio`, timestamp: new Date().toISOString() });
       }
       io.emit("actualizarOyentes", { count: oyentesConectados.size });
+      io.emit("estadisticas", { picOyentes: stats.picOyentes, totalMensajes: stats.totalMensajes, tiempoAlAire: Date.now() - stats.inicioServidor });
     }
   });
 });

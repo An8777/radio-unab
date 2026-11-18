@@ -216,7 +216,6 @@ socket.on("bienvenida", (d) => {
 socket.on("historialChat",     (h) => { h.forEach(m => renderMsg(m, true)); scrollFin(); });
 socket.on("nuevoMensaje",      renderMsg);
 socket.on("mensajeSistema",    renderMsg);
-socket.on("cancionActualizada", aplicar);
 socket.on("actualizarOyentes", (d) => { oyentesCount.textContent = d.count; });
 socket.on("estadoEnVivo",      (d) => { livePill.classList.toggle("offline", !d.enVivo); });
 
@@ -309,4 +308,147 @@ socket.on("voz-chunk", (chunk) => {
   } catch (e) {
     console.warn("[Voz] chunk error:", e);
   }
+});
+
+// ─── HISTORIAL DE CANCIONES ─────────────────────────────────────
+const MAX_HIST_CANCIONES = 5;
+const historialCanciones = []; // { nombre, artista, hora }
+
+const shList = document.getElementById("sh-list");
+
+function agregarAlHistorial(estado) {
+  const nombre = estado.cancionActual;
+  if (!nombre || nombre === "En Vivo") return;
+  // Evita duplicar la misma canción consecutiva
+  if (historialCanciones.length && historialCanciones[0].nombre === nombre) return;
+
+  const hora = new Date().toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" });
+  historialCanciones.unshift({ nombre, artista: estado.artista || "", hora });
+  if (historialCanciones.length > MAX_HIST_CANCIONES) historialCanciones.pop();
+  renderHistorial();
+}
+
+function renderHistorial() {
+  shList.innerHTML = "";
+  if (!historialCanciones.length) {
+    const li = document.createElement("li");
+    li.className = "sh-empty";
+    li.textContent = "Sin historial aún";
+    shList.appendChild(li);
+    return;
+  }
+  historialCanciones.forEach((item) => {
+    const li   = document.createElement("li");
+    li.className = "sh-item";
+
+    const info = document.createElement("div");
+    info.className = "sh-item-info";
+
+    const name = document.createElement("div");
+    name.className = "sh-item-name";
+    name.textContent = item.nombre;
+
+    const artist = document.createElement("div");
+    artist.className = "sh-item-artist";
+    artist.textContent = item.artista || "—";
+
+    const time = document.createElement("span");
+    time.className = "sh-item-time";
+    time.textContent = item.hora;
+
+    info.appendChild(name);
+    info.appendChild(artist);
+    li.appendChild(info);
+    li.appendChild(time);
+    shList.appendChild(li);
+  });
+}
+
+// Hook al evento ya existente "cancionActualizada"
+socket.on("cancionActualizada", (estado) => {
+  agregarAlHistorial(estado);
+  aplicar(estado);
+});
+
+// ─── BOTÓN COMPARTIR ────────────────────────────────────────────
+const btnShare = document.getElementById("btn-share");
+
+btnShare.addEventListener("click", async () => {
+  const cancion = cancionNombre.textContent || "Radio UNAB";
+  const texto   = `Estoy escuchando ${cancion} en Radio UNAB 🎵 radiounab-production.up.railway.app`;
+
+  // Intenta Web Share API (móvil)
+  if (navigator.share) {
+    try {
+      await navigator.share({ title: "Radio UNAB", text: texto, url: "https://radiounab-production.up.railway.app" });
+      return;
+    } catch (_) { /* usuario canceló */ }
+  }
+
+  // Fallback: copiar al portapapeles
+  try {
+    await navigator.clipboard.writeText(texto);
+  } catch (_) {
+    // Último fallback para navegadores sin clipboard API
+    const ta = document.createElement("textarea");
+    ta.value = texto;
+    ta.style.position = "fixed"; ta.style.opacity = "0";
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand("copy");
+    document.body.removeChild(ta);
+  }
+
+  // Feedback visual
+  const originalHTML = btnShare.innerHTML;
+  btnShare.classList.add("copied");
+  btnShare.innerHTML = `<svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M9 16.2L4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4L9 16.2z"/></svg><span>¡Copiado!</span>`;
+  setTimeout(() => {
+    btnShare.classList.remove("copied");
+    btnShare.innerHTML = originalHTML;
+  }, 2000);
+});
+
+// ─── REACCIONES EN VIVO ──────────────────────────────────────────
+const emojiOverlay = document.getElementById("emoji-overlay");
+const reactBtns    = document.querySelectorAll(".react-btn");
+
+// Throttle por emoji: evita spam (máx 1 por emoji cada 800 ms)
+const reactCooldowns = {};
+
+reactBtns.forEach((btn) => {
+  btn.addEventListener("click", () => {
+    const emoji = btn.dataset.emoji;
+    const ahora = Date.now();
+    if (reactCooldowns[emoji] && ahora - reactCooldowns[emoji] < 800) return;
+    reactCooldowns[emoji] = ahora;
+
+    socket.emit("reaccion", { emoji });
+
+    // Animación del botón
+    btn.classList.remove("burst");
+    void btn.offsetWidth; // reflow para reiniciar la animación
+    btn.classList.add("burst");
+  });
+});
+
+function lanzarEmoji(emoji) {
+  const el = document.createElement("span");
+  el.className = "floating-emoji";
+  el.textContent = emoji;
+
+  // Posición horizontal aleatoria dentro del overlay
+  const x = Math.random() * 60; // 0–60px desde la izquierda del overlay
+  el.style.left = x + "px";
+
+  // Duración ligeramente aleatoria para que no sean idénticos
+  const dur = 2.2 + Math.random() * 0.6;
+  el.style.setProperty("--dur", dur + "s");
+
+  emojiOverlay.appendChild(el);
+  el.addEventListener("animationend", () => el.remove());
+}
+
+socket.on("reaccion", (data) => {
+  if (data?.emoji) lanzarEmoji(data.emoji);
 });
