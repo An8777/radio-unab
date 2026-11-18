@@ -25,6 +25,18 @@ async function inicializarDB() {
       )
     `);
     console.log("[DB] Tabla locutores lista");
+
+    // Si no hay ningún locutor, crea uno por defecto
+    const [rows] = await pool.execute("SELECT COUNT(*) as total FROM locutores");
+    if (rows[0].total === 0) {
+      const bcrypt = require("bcrypt");
+      const hash = await bcrypt.hash("radio2024", 10);
+      await pool.execute(
+        "INSERT INTO locutores (usuario, nombre, password) VALUES (?, ?, ?)",
+        ["admin", "Administrador", hash]
+      );
+      console.log("[DB] Locutor por defecto creado — usuario: admin / contraseña: radio2024");
+    }
   } catch (err) {
     console.error("[DB] Error al inicializar:", err.message);
   }
