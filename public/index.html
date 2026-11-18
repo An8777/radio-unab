@@ -110,6 +110,23 @@
       <span>escuchando ahora</span>
     </div>
 
+    <!-- Botón instalar PWA siempre visible -->
+    <button class="install-btn" id="btn-instalar-pwa">
+      <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+        <path d="M19 9h-4V3H9v6H5l7 7 7-7zm-8 2V5h2v6h1.17L12 13.17 9.83 11H11zm-6 7h14v2H5z"/>
+      </svg>
+      <span id="install-txt">Instalar App</span>
+    </button>
+
+    <!-- Modal instrucciones iOS -->
+    <div class="install-modal" id="install-modal" style="display:none">
+      <div class="install-modal-box">
+        <button class="install-modal-close" id="install-modal-close">✕</button>
+        <div class="install-modal-title">📱 Instalar Radio UNAB</div>
+        <div id="install-modal-content"></div>
+      </div>
+    </div>
+
     <!-- Historial de canciones -->
     <div class="song-history" id="song-history">
       <p class="sh-label">ÚLTIMAS CANCIONES</p>
@@ -196,29 +213,65 @@
 <script src="/socket.io/socket.io.js"></script>
 <script src="js/oyente.js"></script>
 <script>
-  // PWA — instalar app
   let pwaPrompt = null;
+  const btnInstalar = document.getElementById("btn-instalar-pwa");
+  const btnViejo    = document.getElementById("btn-instalar");
+  const modal       = document.getElementById("install-modal");
+  const modalClose  = document.getElementById("install-modal-close");
+  const modalContent = document.getElementById("install-modal-content");
+
+  // Detecta iOS
+  const esIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+  // Detecta Android
+  const esAndroid = /android/i.test(navigator.userAgent);
+  // Detecta si ya está instalada
+  const yaInstalada = window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone;
+
+  if (yaInstalada) {
+    btnInstalar.style.display = "none";
+  }
+
+  // Chrome/Edge/Android — captura el prompt automático
   window.addEventListener("beforeinstallprompt", (e) => {
     e.preventDefault();
     pwaPrompt = e;
-    const btn = document.getElementById("btn-instalar");
-    if (btn) btn.style.display = "flex";
-  });
-  document.getElementById("btn-instalar")?.addEventListener("click", async () => {
-    if (!pwaPrompt) return;
-    pwaPrompt.prompt();
-    const { outcome } = await pwaPrompt.userChoice;
-    if (outcome === "accepted") {
-      document.getElementById("btn-instalar").style.display = "none";
-    }
-    pwaPrompt = null;
-  });
-  window.addEventListener("appinstalled", () => {
-    const btn = document.getElementById("btn-instalar");
-    if (btn) btn.style.display = "none";
   });
 
-  // Service Worker
+  btnInstalar.addEventListener("click", async () => {
+    if (pwaPrompt) {
+      // Chrome/Edge/Android — instala directo
+      pwaPrompt.prompt();
+      const { outcome } = await pwaPrompt.userChoice;
+      if (outcome === "accepted") btnInstalar.style.display = "none";
+      pwaPrompt = null;
+    } else if (esIOS) {
+      // iOS Safari — muestra instrucciones
+      modalContent.innerHTML = `
+        <ol class="install-steps">
+          <li>Toca el botón <strong>Compartir</strong> <span class="step-icon">⬆️</span> en la barra de Safari</li>
+          <li>Desplázate y toca <strong>"Agregar a pantalla de inicio"</strong></li>
+          <li>Toca <strong>"Agregar"</strong> en la esquina superior derecha</li>
+        </ol>
+        <p class="install-note">La app aparecerá en tu pantalla de inicio como cualquier app.</p>`;
+      modal.style.display = "flex";
+    } else {
+      // Otros — instrucciones genéricas
+      modalContent.innerHTML = `
+        <ol class="install-steps">
+          <li>Toca el menú <strong>⋮</strong> del navegador</li>
+          <li>Busca <strong>"Instalar app"</strong> o <strong>"Agregar a pantalla de inicio"</strong></li>
+          <li>Confirma la instalación</li>
+        </ol>
+        <p class="install-note">También puedes abrir la radio en Chrome para una instalación más fácil.</p>`;
+      modal.style.display = "flex";
+    }
+  });
+
+  modalClose.addEventListener("click", () => modal.style.display = "none");
+  modal.addEventListener("click", (e) => { if (e.target === modal) modal.style.display = "none"; });
+
+  window.addEventListener("appinstalled", () => btnInstalar.style.display = "none");
+
   if ("serviceWorker" in navigator) {
     navigator.serviceWorker.register("/sw.js").catch(() => {});
   }

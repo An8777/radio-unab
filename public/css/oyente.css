@@ -367,9 +367,49 @@ html,body{height:100%;font-family:'Inter',sans-serif;background:var(--bg);color:
 .send-btn:hover{background:var(--acc2);transform:scale(1.07);box-shadow:0 6px 22px rgba(233,69,96,0.5)}
 .send-btn:active{transform:scale(0.93)}
 
-/* ════════════════════════════════════════
-   RESPONSIVE
-   ════════════════════════════════════════ */
+/* ── Instalar PWA ─── */
+.install-btn{
+  width:100%;display:flex;align-items:center;justify-content:center;gap:8px;
+  padding:11px 16px;border-radius:50px;
+  background:linear-gradient(135deg,var(--purple),#5a3d9f);
+  border:none;color:#fff;font-size:0.82rem;font-weight:700;
+  cursor:pointer;font-family:inherit;
+  box-shadow:0 4px 16px rgba(124,92,191,0.35);
+  transition:transform 0.15s,box-shadow 0.15s;
+}
+.install-btn:hover{transform:translateY(-1px);box-shadow:0 6px 22px rgba(124,92,191,0.5)}
+.install-btn:active{transform:scale(0.97)}
+
+.install-modal{
+  position:fixed;inset:0;z-index:10000;
+  background:rgba(0,0,0,0.7);
+  display:flex;align-items:center;justify-content:center;
+  padding:20px;
+}
+.install-modal-box{
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:16px;padding:28px;max-width:340px;width:100%;
+  position:relative;
+}
+.install-modal-close{
+  position:absolute;top:12px;right:14px;
+  background:none;border:none;color:var(--txt2);
+  font-size:1rem;cursor:pointer;padding:4px;
+}
+.install-modal-title{
+  font-size:1rem;font-weight:700;margin-bottom:18px;
+  text-align:center;
+}
+.install-steps{
+  padding-left:20px;display:flex;flex-direction:column;gap:12px;
+  color:var(--txt);font-size:0.875rem;line-height:1.5;
+}
+.install-steps strong{color:var(--acc2)}
+.step-icon{font-size:1rem}
+.install-note{
+  margin-top:16px;font-size:0.75rem;color:var(--txt2);
+  text-align:center;line-height:1.4;
+}
 @media(max-width:768px){
   html,body{overflow:auto;height:auto}
   .app{grid-template-columns:1fr;grid-template-rows:auto auto;height:auto;min-height:100dvh}
