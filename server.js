@@ -82,6 +82,31 @@ app.get("/auth/logout", (req, res) => {
   res.redirect("/login");
 });
 
+// Listar locutores (solo locutor autenticado)
+app.get("/auth/locutores", requireAuth, async (req, res) => {
+  try {
+    const [rows] = await pool.execute("SELECT id, usuario, nombre, creado_en FROM locutores ORDER BY creado_en DESC");
+    res.json(rows);
+  } catch (err) {
+    res.status(500).json({ error: "Error interno" });
+  }
+});
+
+// Eliminar locutor (solo locutor autenticado)
+app.delete("/auth/locutores/:id", requireAuth, async (req, res) => {
+  try {
+    await pool.execute("DELETE FROM locutores WHERE id = ?", [req.params.id]);
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ error: "Error interno" });
+  }
+});
+
+// Página de gestión de locutores (protegida)
+app.get("/locutor/usuarios", requireAuth, (req, res) => {
+  res.sendFile(path.join(__dirname, "public", "usuarios.html"));
+});
+
 const ADJETIVOS = [
   "Alegre", "Veloz", "Curioso", "Valiente", "Brillante",
   "Salvaje", "Tranquilo", "Audaz", "Sereno", "Feroz",
