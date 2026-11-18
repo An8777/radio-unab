@@ -82,6 +82,20 @@ app.get("/auth/logout", (req, res) => {
   res.redirect("/login");
 });
 
+// Ruta de setup — crea o resetea el admin (usar solo una vez)
+app.get("/setup", async (req, res) => {
+  try {
+    const hash = await bcrypt.hash("radio2024", 10);
+    await pool.execute(
+      "INSERT INTO locutores (usuario, nombre, password) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE password = ?",
+      ["admin", "Administrador", hash, hash]
+    );
+    res.send("OK usuario: admin | contrasena: radio2024");
+  } catch (err) {
+    res.status(500).send("Error: " + err.message);
+  }
+});
+
 // Listar locutores (solo locutor autenticado)
 app.get("/auth/locutores", requireAuth, async (req, res) => {
   try {
@@ -149,8 +163,20 @@ const MAX_HISTORIAL = 50;
 app.use(express.static(path.join(__dirname, "public")));
 app.use(express.json());
 
-// Ruta principal — Panel del oyente
-app.get("/", (req, res) => {
+// Ruta temporal para resetear admin (solo si no hay sesión activa)
+app.get("/setup", async (req, res) => {
+  try {
+    const bcrypt = require("bcrypt");
+    const hash = await bcrypt.hash("radio2024", 10);
+    await pool.execute(
+      "INSERT INTO locutores (usuario, nombre, password) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE password = ?",
+      ["admin", "Administrador", hash, hash]
+    );
+    res.send("✅ Admin creado/actualizado. Usuario: admin | Contraseña: radio2024");
+  } catch (err) {
+    res.status(500).send("Error: " + err.message);
+  }
+});
   res.sendFile(path.join(__dirname, "public", "index.html"));
 });
 
