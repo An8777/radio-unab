@@ -2,6 +2,9 @@ const express = require("express");
 const http = require("http");
 const { Server } = require("socket.io");
 const path = require("path");
+const bcrypt = require("bcrypt");
+const session = require("express-session");
+const { pool, inicializarDB } = require("./db");
 
 const app = express();
 const server = http.createServer(app);
@@ -9,6 +12,75 @@ const io = new Server(server, {
   cors: { origin: "*" }
 });
 
+// ─── Sesiones ────────────────────────────────────────────────────────────────
+app.use(session({
+  secret: process.env.SESSION_SECRET || "radio-unab-secret-2024",
+  resave: false,
+  saveUninitialized: false,
+  cookie: { maxAge: 1000 * 60 * 60 * 8 } // 8 horas
+}));
+
+app.use(express.json());
+app.use(express.static(path.join(__dirname, "public")));
+
+// ─── Middleware: verificar sesión de locutor ──────────────────────────────────
+function requireAuth(req, res, next) {
+  if (req.session && req.session.locutor) return next();
+  res.redirect("/login");
+}
+
+// ─── Rutas de autenticación ───────────────────────────────────────────────────
+
+// Página de login
+app.get("/login", (req, res) => {
+  if (req.session && req.session.locutor) return res.redirect("/locutor");
+  res.sendFile(path.join(__dirname, "public", "login.html"));
+});
+
+// Registro
+app.post("/auth/registro", async (req, res) => {
+  const { usuario, nombre, password } = req.body;
+  if (!usuario || !nombre || !password) return res.status(400).json({ error: "Completa todos los campos" });
+  if (password.length < 6) return res.status(400).json({ error: "La contraseña debe tener al menos 6 caracteres" });
+  try {
+    const hash = await bcrypt.hash(password, 10);
+    await pool.execute(
+      "INSERT INTO locutores (usuario, nombre, password) VALUES (?, ?, ?)",
+      [usuario.toLowerCase(), nombre, hash]
+    );
+    res.json({ ok: true });
+  } catch (err) {
+    if (err.code === "ER_DUP_ENTRY") return res.status(400).json({ error: "Ese usuario ya existe" });
+    console.error("[Auth] Registro error:", err.message);
+    res.status(500).json({ error: "Error interno del servidor" });
+  }
+});
+
+// Login
+app.post("/auth/login", async (req, res) => {
+  const { usuario, password } = req.body;
+  if (!usuario || !password) return res.status(400).json({ error: "Completa todos los campos" });
+  try {
+    const [rows] = await pool.execute(
+      "SELECT * FROM locutores WHERE usuario = ?",
+      [usuario.toLowerCase()]
+    );
+    if (rows.length === 0) return res.status(401).json({ error: "Usuario o contraseña incorrectos" });
+    const valido = await bcrypt.compare(password, rows[0].password);
+    if (!valido) return res.status(401).json({ error: "Usuario o contraseña incorrectos" });
+    req.session.locutor = { id: rows[0].id, usuario: rows[0].usuario, nombre: rows[0].nombre };
+    res.json({ ok: true });
+  } catch (err) {
+    console.error("[Auth] Login error:", err.message);
+    res.status(500).json({ error: "Error interno del servidor" });
+  }
+});
+
+// Logout
+app.get("/auth/logout", (req, res) => {
+  req.session.destroy();
+  res.redirect("/login");
+});
 
 const ADJETIVOS = [
   "Alegre", "Veloz", "Curioso", "Valiente", "Brillante",
@@ -57,8 +129,8 @@ app.get("/", (req, res) => {
   res.sendFile(path.join(__dirname, "public", "index.html"));
 });
 
-// Ruta del locutor — Panel de control
-app.get("/locutor", (req, res) => {
+// Ruta del locutor — protegida por login
+app.get("/locutor", requireAuth, (req, res) => {
   res.sendFile(path.join(__dirname, "public", "locutor.html"));
 });
 
@@ -229,7 +301,9 @@ io.on("connection", (socket) => {
 
 //   ─── Arrancar servidor ───────  //
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => {
-  console.log(`\n🎙️  Radio en Vivo corriendo en: http://localhost:${PORT}`);
-  console.log(`🎚️  Panel del Locutor en:        http://localhost:${PORT}/locutor\n`);
+inicializarDB().then(() => {
+  server.listen(PORT, () => {
+    console.log(`\n🎙️  Radio en Vivo corriendo en: http://localhost:${PORT}`);
+    console.log(`🎚️  Panel del Locutor en:        http://localhost:${PORT}/locutor\n`);
+  });
 });
